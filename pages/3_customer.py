@@ -37,7 +37,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
 OPENROUTESERVICE_API_KEY = "5b3ce3597851110001cf62488b3cfccc385db49e8232a231f15a915c8e985f86b2b58d2c0f158e37"
 
 # Initialize session state for authentication and app data
@@ -72,8 +71,6 @@ def connect_db():
         ssl={"ssl": {}}
     )
     return conn
-
-
 
 # Authentication function
 def authenticate_user(meter_number):
@@ -312,7 +309,6 @@ def make_mobile_friendly():
                 padding: 0 !important;
                 margin: 0 !important;
             }
-
             /* Folium map itself */
             .folium-map {
                 width: 100% !important;
@@ -320,7 +316,6 @@ def make_mobile_friendly():
                 margin: 0 !important;
                 border-radius: 0 !important;
             }
-
             /* Ensure full viewport width */
             html, body, #root, .stApp {
                 width: 100% !important;
@@ -336,8 +331,8 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     lon1 = float(lon1)
     lat2 = float(lat2)
     lon2 = float(lon2)
-    
-    R = 6371  # Earth radius in km
+   
+    R = 6371 # Earth radius in km
     dlat = radians(lat2 - lat1)
     dlon = radians(lon2 - lon1)
     a = sin(dlat / 2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2)**2
@@ -351,10 +346,10 @@ def get_route(start_lat, start_lon, end_lat, end_lon):
         end_lat = float(end_lat)
         end_lon = float(end_lon)
     except (ValueError, TypeError):
-        st.error("⚠️ Invalid coordinates provided for routing.")
+        st.error("Invalid coordinates provided for routing.")
         return None, None, None
     if None in [start_lat, start_lon, end_lat, end_lon]:
-        st.error("⚠️ Missing coordinates for routing.")
+        st.error("Missing coordinates for routing.")
         return None, None, None
     try:
         url = "https://api.openrouteservice.org/v2/directions/driving-car/geojson"
@@ -377,23 +372,23 @@ def get_route(start_lat, start_lon, end_lat, end_lon):
                 duration = route["properties"]["summary"]["duration"] / 60
                 return coordinates, distance, duration
             else:
-                st.error("⚠️ No route found by OpenRouteService.")
+                st.error("No route found by OpenRouteService.")
         elif response.status_code == 401:
-            st.error("❌ Invalid OpenRouteService API key.")
+            st.error("Invalid OpenRouteService API key.")
         elif response.status_code == 429:
-            st.error("❌ OpenRouteService rate limit exceeded.")
+            st.error("OpenRouteService rate limit exceeded.")
         else:
-            st.error(f"⚠️ OpenRouteService failed with status {response.status_code}: {response.text}")
+            st.error(f"OpenRouteService failed with status {response.status_code}: {response.text}")
         distance = calculate_distance(start_lat, start_lon, end_lat, end_lon)
         eta = distance * 2
         return None, distance, eta
     except requests.Timeout:
-        st.error("⚠️ OpenRouteService request timed out.")
+        st.error("OpenRouteService request timed out.")
         distance = calculate_distance(start_lat, start_lon, end_lat, end_lon)
         eta = distance * 2
         return None, distance, eta
     except Exception as e:
-        st.error(f"⚠️ OpenRouteService routing error: {str(e)}")
+        st.error(f"OpenRouteService routing error: {str(e)}")
         distance = calculate_distance(start_lat, start_lon, end_lat, end_lon)
         eta = distance * 2
         return None, distance, eta
@@ -407,17 +402,16 @@ def get_assigned_crew_with_eta():
     cursor = conn.cursor()
     try:
         # Fetch customer's location
-        cursor.execute("SELECT latitude, longitude FROM Customer WHERE meter_number = %s", 
+        cursor.execute("SELECT latitude, longitude FROM Customer WHERE meter_number = %s",
                       (st.session_state.meter_number,))
         customer_location = cursor.fetchone()
         if not customer_location or None in customer_location:
-            st.error("❌ Customer location not found or incomplete.")
+            st.error("Customer location not found or incomplete.")
             return None
         customer_lat, customer_lon = customer_location
-
         # Fetch the assigned crew and outage details
         cursor.execute("""
-            SELECT c.id, c.name, c.latitude, c.longitude, o.id 
+            SELECT c.id, c.name, c.latitude, c.longitude, o.id
             FROM Crew c
             JOIN Outage o ON c.id = o.assigned_crew_id
             JOIN Customer cu ON o.customer_id = cu.id
@@ -425,22 +419,18 @@ def get_assigned_crew_with_eta():
         """, (st.session_state.meter_number,))
         crew = cursor.fetchone()
         if not crew:
-            st.warning("⚠️ No crew assigned yet.")
+            st.warning("No crew assigned yet.")
             return None
-
         crew_id, name, crew_lat, crew_lon, outage_id = crew
-
         # Store the outage_id in session state
         st.session_state.outage_id = outage_id
-
         _, distance, eta_minutes = get_route_cached(crew_lat, crew_lon, customer_lat, customer_lon)
         if eta_minutes is None:
-            st.error("❌ Unable to calculate ETA.")
+            st.error("Unable to calculate ETA.")
             return None
-
         return crew_id, name, crew_lat, crew_lon, distance, eta_minutes
     except Exception as e:
-        st.error(f"❌ Error fetching assigned crew: {e}")
+        st.error(f"Error fetching assigned crew: {e}")
         return None
     finally:
         conn.close()
@@ -465,18 +455,15 @@ def report_outage(description):
             INSERT INTO Outage (customer_id, description, report_time, status)
             VALUES ((SELECT id FROM Customer WHERE meter_number = %s), %s, NOW(), 'Pending')
         """, (st.session_state.meter_number, description))
-        outage_id = cursor.lastrowid  # Get the ID of the newly created outage
+        outage_id = cursor.lastrowid # Get the ID of the newly created outage
         conn.commit()
-
         # Assign the outage to the best crew
         assign_incident_to_best_crew(outage_id)
-
         # Store the outage_id in session state
         st.session_state.outage_id = outage_id
-
-        st.success("✅ Outage reported and assigned to the nearest crew!")
+        st.success("Outage reported and assigned to the nearest crew!")
     except Exception as e:
-        st.error(f"❌ Error reporting outage: {e}")
+        st.error(f"Error reporting outage: {e}")
         conn.rollback()
     finally:
         cursor.close()
@@ -494,7 +481,7 @@ def assign_incident_to_best_crew(outage_id):
         """, (outage_id,))
         customer_location = cursor.fetchone()
         if not customer_location:
-            st.error("❌ Customer location not found for this outage.")
+            st.error("Customer location not found for this outage.")
             return
         customer_lat, customer_lon = customer_location
         cursor.execute("""
@@ -505,7 +492,7 @@ def assign_incident_to_best_crew(outage_id):
         """)
         crews = cursor.fetchall()
         if not crews:
-            st.error("❌ No crews found in the database.")
+            st.error("No crews found in the database.")
             return
         best_crew = None
         min_distance = float('inf')
@@ -531,26 +518,26 @@ def assign_incident_to_best_crew(outage_id):
             if customer_id:
                 customer_id = customer_id[0]
                 message = (
-                    f"🚨 Your outage (ID: {outage_id}) has been assigned to Crew {name} (ID: {crew_id}). "
-                    f"📍 Crew Location: Latitude={crew_lat}, Longitude={crew_lon} "
-                    f"📏 Distance to You: {min_distance:.2f} km "
-                    f"⏱️ ETA: {eta_minutes:.0f} minutes."
+                    f"Your outage (ID: {outage_id}) has been assigned to Crew {name} (ID: {crew_id}). "
+                    f"Crew Location: Latitude={crew_lat}, Longitude={crew_lon} "
+                    f"Distance to You: {min_distance:.2f} km "
+                    f"ETA: {eta_minutes:.0f} minutes."
                 )
                 cursor.execute("""
                     INSERT INTO Notification (user_id, message, status)
                     VALUES (%s, %s, 'unread')
                 """, (customer_id, message))
             conn.commit()
-            st.success(f"✅ Outage {outage_id} assigned to Crew {name} (ID: {crew_id}).")
+            st.success(f"Outage {outage_id} assigned to Crew {name} (ID: {crew_id}).")
         else:
-            st.error("❌ No available crew to assign to this outage.")
+            st.error("No available crew to assign to this outage.")
     except Exception as e:
-        st.error(f"❌ Error assigning crew: {e}")
+        st.error(f"Error assigning crew: {e}")
         conn.rollback()
     finally:
         conn.close()
 
-@st.cache_data(ttl=30)  # Cache data for 30 seconds to reduce database load
+@st.cache_data(ttl=30) # Cache data for 30 seconds to reduce database load
 def fetch_nearby_crews(customer_lat, customer_lon, max_distance=5):
     """Return crews within max_distance km"""
     conn = connect_db()
@@ -559,9 +546,9 @@ def fetch_nearby_crews(customer_lat, customer_lon, max_distance=5):
         # First ensure customer coordinates are floats
         customer_lat = float(customer_lat)
         customer_lon = float(customer_lon)
-        
+       
         cursor.execute("""
-            SELECT id, name, latitude, longitude 
+            SELECT id, name, latitude, longitude
             FROM Crew
             WHERE latitude IS NOT NULL AND longitude IS NOT NULL
         """)
@@ -571,12 +558,12 @@ def fetch_nearby_crews(customer_lat, customer_lon, max_distance=5):
             try:
                 distance = calculate_distance(customer_lat, customer_lon, float(lat), float(lon))
                 if distance <= max_distance:
-                    eta_minutes = distance * 2  # Approximate ETA (2 min per km)
+                    eta_minutes = distance * 2 # Approximate ETA (2 min per km)
                     nearby_crews.append((crew_id, name, lat, lon, distance, eta_minutes))
             except (TypeError, ValueError) as e:
                 st.error(f"Skipping crew {crew_id}: {str(e)}")
                 continue
-        
+       
         # Sort by distance
         return sorted(nearby_crews, key=lambda x: x[4])
     except Exception as e:
@@ -584,11 +571,12 @@ def fetch_nearby_crews(customer_lat, customer_lon, max_distance=5):
         return []
     finally:
         conn.close()
+
 def get_customer_location():
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT latitude, longitude FROM Customer WHERE meter_number = %s", 
+        cursor.execute("SELECT latitude, longitude FROM Customer WHERE meter_number = %s",
                        (st.session_state.meter_number,))
         location = cursor.fetchone()
         return location if location else (None, None)
@@ -599,42 +587,40 @@ def display_interactive_map():
     # Ensure the map updates dynamically
     if "last_location_update" not in st.session_state:
         st.session_state.last_location_update = 0
-
     current_time = time.time()
-    if current_time - st.session_state.last_location_update > 10:  # Update every 10 seconds
-        update_crew_locations()  # Fetch updated crew locations
+    if current_time - st.session_state.last_location_update > 10: # Update every 10 seconds
+        update_crew_locations() # Fetch updated crew locations
         st.session_state.last_location_update = current_time
-
     conn = connect_db()
     cursor = conn.cursor()
     try:
         # Fetch customer's location
-        cursor.execute("SELECT latitude, longitude FROM Customer WHERE meter_number = %s", 
+        cursor.execute("SELECT latitude, longitude FROM Customer WHERE meter_number = %s",
                       (st.session_state.meter_number,))
         customer_location = cursor.fetchone()
         if not customer_location or None in customer_location:
-            st.error("❌ Customer location not found or incomplete.")
+            st.error("Customer location not found or incomplete.")
             return
         customer_lat, customer_lon = customer_location
-        
+       
         # Create map with 100% width parameter
         m = folium.Map(
             location=[customer_lat, customer_lon],
             zoom_start=14,
-            width='100%',  # Critical for full width
+            width='100%', # Critical for full width
             tiles='OpenStreetMap'
         )
-        
+       
         # Add customer's location marker
         folium.Marker(
             location=[customer_lat, customer_lon],
-            popup="<b>🏠 Your Location</b>",
+            popup="<b>Your Location</b>",
             icon=folium.Icon(color="red", icon="home")
         ).add_to(m)
-        
+       
         # Fetch assigned crew (if any)
         cursor.execute("""
-            SELECT c.id, c.name, c.latitude, c.longitude 
+            SELECT c.id, c.name, c.latitude, c.longitude
             FROM Crew c
             JOIN Outage o ON c.id = o.assigned_crew_id
             JOIN Customer cu ON o.customer_id = cu.id
@@ -646,7 +632,7 @@ def display_interactive_map():
             try:
                 coordinates, distance, eta_minutes = get_route(crew_lat, crew_lon, customer_lat, customer_lon)
                 popup_text = f"""
-                    <b>🚗 Assigned Crew</b><br>
+                    <b>Assigned Crew</b><br>
                     Name: {name or 'N/A'}<br>
                     ID: {crew_id or 'N/A'}<br>
                     Distance: {distance:.1f} km<br>
@@ -654,7 +640,7 @@ def display_interactive_map():
                 """
             except:
                 popup_text = f"""
-                    <b>🚗 Assigned Crew</b><br>
+                    <b>Assigned Crew</b><br>
                     Name: {name or 'N/A'}<br>
                     ID: {crew_id or 'N/A'}<br>
                     (Route calculation failed)
@@ -662,18 +648,18 @@ def display_interactive_map():
             folium.Marker(
                 location=[crew_lat, crew_lon],
                 popup=popup_text,
-                icon=folium.Icon(color="red", icon="truck")  # Truck icon for assigned crew
+                icon=folium.Icon(color="red", icon="truck") # Truck icon for assigned crew
             ).add_to(m)
             if coordinates and None not in [crew_lat, crew_lon, customer_lat, customer_lon]:
                 folium.PolyLine(
                     locations=coordinates,
-                    color="green",  # Green for route line
+                    color="green", # Green for route line
                     weight=3
                 ).add_to(m)
-        
+       
         # Fetch nearby crews
         cursor.execute("""
-            SELECT id, name, latitude, longitude 
+            SELECT id, name, latitude, longitude
             FROM Crew
             WHERE latitude IS NOT NULL AND longitude IS NOT NULL
             AND (id != %s OR %s IS NULL)
@@ -685,7 +671,7 @@ def display_interactive_map():
             try:
                 _, distance, eta_minutes = get_route(lat, lon, customer_lat, customer_lon)
                 popup_text = f"""
-                    <b>🚙 Nearby Crew</b><br>
+                    <b>Nearby Crew</b><br>
                     Name: {name or 'N/A'}<br>
                     ID: {crew_id or 'N/A'}<br>
                     Distance: {distance:.1f} km<br>
@@ -693,21 +679,21 @@ def display_interactive_map():
                 """
             except:
                 popup_text = f"""
-                    <b>🚙 Nearby Crew</b><br>
+                    <b>Nearby Crew</b><br>
                     Name: {name or 'N/A'}<br>
                     ID: {crew_id or 'N/A'}
                 """
             folium.Marker(
                 location=[lat, lon],
                 popup=popup_text,
-                icon=folium.Icon(color="blue", icon="user")  # User icon for nearby crews
+                icon=folium.Icon(color="blue", icon="user") # User icon for nearby crews
             ).add_to(m)
-        
+       
         # Add legend
         legend_html = '''
         <div style="
-            position: fixed !important; 
-            bottom: 50px !important; left: 50px !important; 
+            position: fixed !important;
+            bottom: 50px !important; left: 50px !important;
             width: 160px !important;
             height: 110px !important;
             border: 2px solid grey !important;
@@ -728,21 +714,20 @@ def display_interactive_map():
         </div>
         '''
         m.get_root().html.add_child(folium.Element(legend_html))
-        
+       
         # Display map in a column layout with 100% width
-        map_col, _ = st.columns([0.85, 0.15])  # Adjust ratios as needed
+        map_col, _ = st.columns([0.85, 0.15]) # Adjust ratios as needed
         with map_col:
             st_folium(
                 m,
-                width='100%',  # Ensure full width
-                height=500,    # Fixed height for consistency
+                width='100%', # Ensure full width
+                height=500, # Fixed height for consistency
                 returned_objects=[]
             )
     except Exception as e:
-        st.error(f"❌ Map Error: {str(e)}")
+        st.error(f"Map Error: {str(e)}")
     finally:
         conn.close()
-
 
 def update_crew_locations():
     """Fetch and update the latest locations of all crews."""
@@ -750,7 +735,7 @@ def update_crew_locations():
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            SELECT id, latitude, longitude 
+            SELECT id, latitude, longitude
             FROM Crew
         """)
         crews = cursor.fetchall()
@@ -759,7 +744,7 @@ def update_crew_locations():
             if lat is not None and lon is not None:
                 st.session_state[f"crew_{crew_id}_location"] = (lat, lon)
     except Exception as e:
-        st.error(f"❌ Error updating crew locations: {str(e)}")
+        st.error(f"Error updating crew locations: {str(e)}")
     finally:
         conn.close()
 
@@ -790,7 +775,7 @@ def fetch_all_notifications():
 def mark_notifications_as_read():
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute("UPDATE Notification SET status = 'read' WHERE user_id = %s", 
+    cursor.execute("UPDATE Notification SET status = 'read' WHERE user_id = %s",
                    (st.session_state.customer_id,))
     conn.commit()
     conn.close()
@@ -800,7 +785,7 @@ def fetch_chat_history():
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            SELECT sender_id, receiver_id, message, timestamp 
+            SELECT sender_id, receiver_id, message, timestamp
             FROM Chat
             WHERE sender_id = %s OR receiver_id = %s
             ORDER BY timestamp ASC
@@ -808,7 +793,7 @@ def fetch_chat_history():
         chat_history = cursor.fetchall()
         return chat_history
     except Exception as e:
-        st.error(f"❌ Error fetching chat history: {e}")
+        st.error(f"Error fetching chat history: {e}")
         return []
     finally:
         conn.close()
@@ -819,29 +804,28 @@ def send_message(recipient_id, message):
     try:
         # Check if the same message already exists
         cursor.execute("""
-            SELECT COUNT(*) 
-            FROM Chat 
+            SELECT COUNT(*)
+            FROM Chat
             WHERE sender_id = %s AND receiver_id = %s AND message = %s
         """, (st.session_state.customer_id, recipient_id, message))
         count = cursor.fetchone()[0]
         if count > 0:
             st.warning("This message has already been sent.")
             return
-        
+       
         # Insert the message into the Chat table
         cursor.execute("""
             INSERT INTO Chat (sender_id, receiver_id, message, timestamp)
             VALUES (%s, %s, %s, NOW())
         """, (st.session_state.customer_id, recipient_id, message))
         conn.commit()
-        st.success("✅ Message sent!")
+        st.success("Message sent!")
     except Exception as e:
-        st.error(f"❌ Error sending message: {e}")
+        st.error(f"Error sending message: {e}")
         conn.rollback()
     finally:
         conn.close()
 
-# Function Definition
 # Function Definition
 def fetch_chat_history():
     conn = connect_db()
@@ -856,7 +840,7 @@ def fetch_chat_history():
         chat_history = cursor.fetchall()
         return chat_history
     except Exception as e:
-        st.error(f"❌ Error fetching chat history: {e}")
+        st.error(f"Error fetching chat history: {e}")
         return []
     finally:
         conn.close()
@@ -864,13 +848,11 @@ def fetch_chat_history():
 # Function Call
 chat_history = fetch_chat_history()
 
-
-
 # Login form (only shown when not authenticated)
 if not st.session_state.authenticated:
-    st.title("🔒 Customer Portal Login")
+    st.title("Customer Portal Login")
     with st.form("login_form"):
-        meter_number = st.text_input("Enter Your Meter Number:", 
+        meter_number = st.text_input("Enter Your Meter Number:",
                                    placeholder="e.g., METER-123456",
                                    key="login_meter_number")
         login_button = st.form_submit_button("Login")
@@ -881,7 +863,7 @@ if not st.session_state.authenticated:
                 customer_lat, customer_lon = get_customer_location()
                 # Initialize session state variables with proper arguments
                 st.session_state.assigned_crew_data = get_assigned_crew_with_eta()
-                st.session_state.nearby_crews = fetch_nearby_crews(customer_lat, customer_lon)  # Pass coordinates here
+                st.session_state.nearby_crews = fetch_nearby_crews(customer_lat, customer_lon) # Pass coordinates here
                 st.session_state.notifications = fetch_unread_notifications()
                 st.rerun()
         else:
@@ -892,58 +874,56 @@ if not st.session_state.authenticated:
 make_mobile_friendly()
 
 # Logout button
-st.button("🚪 Logout", on_click=logout, key="logout_btn", 
-          help="Click to logout", 
+st.button("Logout", on_click=logout, key="logout_btn",
+          help="Click to logout",
           use_container_width=False,
           type="primary")
 
 # Navigation bar
 cols = st.columns(3)
 with cols[0]:
-    if st.button("🏠 Home", key="home_button"):
+    if st.button("Home", key="home_button"):
         st.session_state.active_tab = 'home'
 with cols[1]:
-    if st.button("💬 Messages", key="messages_button"):
+    if st.button("Messages", key="messages_button"):
         st.session_state.active_tab = 'messages'
 with cols[2]:
-    if st.button("🔔 Notifications", key="notifications_button"):
+    if st.button("Notifications", key="notifications_button"):
         st.session_state.active_tab = 'notifications'
 
 # Main app content
 if st.session_state.active_tab == 'home':
-    st.title("⚡ Outage Reporting Portal")
-    with st.expander("⚠️ Report New Outage", expanded=False):
+    st.title("Outage Reporting Portal")
+    with st.expander("Report New Outage", expanded=False):
         with st.form("outage_form"):
             outage_desc = st.text_area(
                 "Describe the issue:",
                 placeholder="e.g., No power in entire building since 2PM"
             )
-            report_button = st.form_submit_button("🚨 Report Outage")
+            report_button = st.form_submit_button("Report Outage")
             if report_button:
                 if outage_desc.strip():
                     report_outage(outage_desc)
                     customer_lat, customer_lon = get_customer_location()
                     st.session_state.assigned_crew_data = get_assigned_crew_with_eta()
-                    st.session_state.nearby_crews = fetch_nearby_crews(customer_lat, customer_lon)  # Pass coordinates here
+                    st.session_state.nearby_crews = fetch_nearby_crews(customer_lat, customer_lon) # Pass coordinates here
                     st.session_state.notifications = fetch_unread_notifications()
                     st.rerun()
                 else:
                     st.warning("Please enter a description of the outage")
 
-    st.header("👷 Your Crew")
-
+    st.header("Your Crew")
     if st.session_state.outage_id:
         # Fetch the outage status
         conn = connect_db()
         cursor = conn.cursor()
         try:
             cursor.execute("""
-                SELECT status 
-                FROM Outage 
+                SELECT status
+                FROM Outage
                 WHERE id = %s
             """, (st.session_state.outage_id,))
             outage_status = cursor.fetchone()[0]
-
             # Display crew details only if the outage is not resolved
             if outage_status in ['Assigned', 'In Progress']:
                 if st.session_state.assigned_crew_data:
@@ -951,7 +931,7 @@ if st.session_state.active_tab == 'home':
                     st.markdown(f"""
                         <div class="card">
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <span style="font-size: 1.5em;">👷‍♂️</span>
+                                <span style="font-size: 1.5em;"></span>
                                 <div>
                                     <div style="font-weight: 600; font-size: 1.1em;">{name}</div>
                                     <div style="font-size: 0.9em;">Crew ID: {crew_id}</div>
@@ -959,42 +939,42 @@ if st.session_state.active_tab == 'home':
                             </div>
                             <div style="margin-top: 0.8rem;">
                                 <div style="display: flex; justify-content: space-between;">
-                                    <span>📍 Distance</span>
+                                    <span>Distance</span>
                                     <span><strong>{distance:.1f} km</strong></span>
                                 </div>
                                 <div style="display: flex; justify-content: space-between;">
-                                    <span>⏱️ ETA</span>
+                                    <span>ETA</span>
                                     <span><strong>{eta_minutes:.0f} min</strong></span>
                                 </div>
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
                 else:
-                    st.warning("⚠️ No crew assigned yet.")
+                    st.warning("No crew assigned yet.")
             else:
                 # Display a message if the outage is resolved
-                st.success("✅ The outage has been resolved. No crew is currently assigned.")
+                st.success("The outage has been resolved. No crew is currently assigned.")
         except Exception as e:
-            st.error(f"❌ Error fetching outage status: {str(e)}")
+            st.error(f"Error fetching outage status: {str(e)}")
         finally:
             conn.close()
     else:
-        st.info("ℹ️ No active outage found.")
+        st.info("No active outage found.")
 
-    st.header("🌍 Live Outage Map")
+    st.header("Live Outage Map")
     with st.container():
         display_interactive_map()
 
-    with st.expander("🚗 Available Crews", expanded=True):
+    with st.expander("Available Crews", expanded=True):
         customer_lat, customer_lon = get_customer_location()
         if None in [customer_lat, customer_lon]:
-            st.error("❌ Your location is not set - cannot find nearby crews")
+            st.error("Your location is not set - cannot find nearby crews")
         else:
             nearby_crews = fetch_nearby_crews(customer_lat, customer_lon)
-        
+       
             if not nearby_crews:
                 st.warning("""
-                ⚠️ No crews found within 5km. 
+                No crews found within 5km.
                 This could mean:
                 - No crews are currently available
                 - Your location isn't set correctly
@@ -1006,49 +986,49 @@ if st.session_state.active_tab == 'home':
                     st.markdown(f"""
                     <div class="card">
                         <div style="display: flex; justify-content: space-between;">
-                            <span><strong>👷 {name}</strong></span>
+                            <span><strong>{name}</strong></span>
                             <span>ID: {crew_id}</span>
                         </div>
                         <div style="margin-top: 10px;">
-                            <div>📍 Distance: {distance:.1f} km</div>
-                            <div>⏱️ Approx. ETA: {eta:.0f} minutes</div>
+                            <div>Distance: {distance:.1f} km</div>
+                            <div>Approx. ETA: {eta:.0f} minutes</div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
 
 elif st.session_state.active_tab == 'messages':
-    st.title("💬 Messages")
-    
+    st.title("Messages")
+   
     # Get all available crews (assigned + nearby)
     assigned_crew_data = st.session_state.assigned_crew_data
     assigned_crew_id = assigned_crew_data[0] if assigned_crew_data else None
     assigned_crew_name = assigned_crew_data[1] if assigned_crew_data else None
-    
+   
     customer_lat, customer_lon = get_customer_location()
     nearby_crews = fetch_nearby_crews(customer_lat, customer_lon) if None not in [customer_lat, customer_lon] else []
-    
+   
     # Create list of available recipients
     recipient_options = []
     recipient_mapping = {}
-    
+   
     # Add assigned crew if available
     if assigned_crew_id:
-        display_name = f"👷 Assigned Crew: {assigned_crew_name} (ID: {assigned_crew_id})"
+        display_name = f"Assigned Crew: {assigned_crew_name} (ID: {assigned_crew_id})"
         recipient_options.append(display_name)
         recipient_mapping[display_name] = assigned_crew_id
-    
+   
     # Add nearby crews
     for crew in nearby_crews:
         crew_id, name, _, _, _, _ = crew
         if assigned_crew_id and crew_id == assigned_crew_id:
             continue
-        display_name = f"🚗 Nearby Crew: {name} (ID: {crew_id})"
+        display_name = f"Nearby Crew: {name} (ID: {crew_id})"
         recipient_options.append(display_name)
         recipient_mapping[display_name] = crew_id
-    
+   
     # Display chat interface
     col1, col2 = st.columns([2, 1])
-    
+   
     with col1:
         st.subheader("Conversation History")
         if not chat_history:
@@ -1059,14 +1039,14 @@ elif st.session_state.active_tab == 'messages':
             for msg in chat_history:
                 # Determine the other party's ID based on who sent the message
                 other_party_id = msg[1] if msg[0] == st.session_state.customer_id else msg[0]
-    
+   
                 # Initialize the conversation entry if it doesn't exist
                 if other_party_id not in conversations:
                     conversations[other_party_id] = {
-                    'name': f"Crew {other_party_id}",  # You may want to fetch the actual name from the database
+                    'name': f"Crew {other_party_id}", # You may want to fetch the actual name from the database
                     'messages': []
                     }
-    
+   
                 # Add the message to the conversation
                 sender_name = "You" if msg[0] == st.session_state.customer_id else f"Crew {msg[0]}"
                 conversations[other_party_id]['messages'].append({
@@ -1074,7 +1054,7 @@ elif st.session_state.active_tab == 'messages':
                     'message': msg[2],
                     'timestamp': msg[3]
                 })
-            
+           
             # Display each conversation
             for crew_id, conv in conversations.items():
                 with st.expander(f"Chat with {conv['name']}", expanded=True):
@@ -1089,7 +1069,7 @@ elif st.session_state.active_tab == 'messages':
                                 </div>
                             </div>
                         """, unsafe_allow_html=True)
-    
+   
     with col2:
         st.subheader("New Message")
         with st.form("new_message_form", clear_on_submit=True):
@@ -1101,16 +1081,16 @@ elif st.session_state.active_tab == 'messages':
                     options=recipient_options,
                     index=0
                 )
-                
+               
                 message_text = st.text_area(
-                    "Your message:", 
+                    "Your message:",
                     key="new_message",
                     max_chars=500
                 )
                 st.caption(f"{len(message_text)}/500 characters")
                 if "last_sent_message" not in st.session_state:
                     st.session_state.last_sent_message = None
-                if st.form_submit_button("📤 Send"):
+                if st.form_submit_button("Send"):
                     if not message_text.strip():
                          st.error("Please enter a message")
                     else:
@@ -1120,14 +1100,14 @@ elif st.session_state.active_tab == 'messages':
                             message_id = str(uuid.uuid4())
                             if st.session_state.last_sent_message != message_id:
                                 send_message(recipient_id, message_text)
-                                st.session_state.last_sent_message = message_id  # Mark as sent
+                                st.session_state.last_sent_message = message_id # Mark as sent
                                 time.sleep(1)
                                 st.rerun()
                         else:
                             st.error("Could not determine recipient")
 
 elif st.session_state.active_tab == 'notifications':
-    st.title("🔔 Notifications")
+    st.title("Notifications")
     if st.session_state.customer_id:
         notifications = fetch_all_notifications()
         if notifications:
@@ -1141,4 +1121,4 @@ elif st.session_state.active_tab == 'notifications':
                 """, unsafe_allow_html=True)
             mark_notifications_as_read()
         else:
-            st.info("ℹ️ No notifications yet")
+            st.info("No notifications yet")
