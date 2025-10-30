@@ -683,7 +683,7 @@ def resolve_task(outage_id):
             if outage_location:
                 outage_lat, outage_lon = outage_location
                 cursor.execute("""
-                    UPDATE Crew1
+                    UPDATE Crew
                     SET latitude = %s, longitude = %s
                     WHERE id = %s
                 """, (outage_lat, outage_lon, crew_id))
