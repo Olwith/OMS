@@ -387,7 +387,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 def update_crew_location(crew_id, latitude, longitude):
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute("UPDATE Crew1 SET latitude = %s, longitude = %s WHERE id = %s", (latitude, longitude, crew_id))
+    cursor.execute("UPDATE Crew SET latitude = %s, longitude = %s WHERE id = %s", (latitude, longitude, crew_id))
     conn.commit()
     conn.close()
     st.session_state.location_updates += 1
@@ -397,7 +397,7 @@ def update_crew_location(crew_id, latitude, longitude):
 def get_crew_location(crew_id):
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT latitude, longitude FROM Crew1 WHERE id = %s", (crew_id,))
+    cursor.execute("SELECT latitude, longitude FROM Crew WHERE id = %s", (crew_id,))
     crew_location = cursor.fetchone()
     conn.close()
     return crew_location if crew_location else (None, None)
@@ -407,7 +407,7 @@ def get_outage_location(outage_id):
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT latitude, longitude FROM Customer1 
+        SELECT latitude, longitude FROM Customer 
         WHERE id = (SELECT customer_id FROM Outage WHERE id = %s)
     """, (outage_id,))
     outage_location = cursor.fetchone()
@@ -457,7 +457,7 @@ def assign_incident(crew_id, outage_id, distance, eta):
         # 1. Get customer name for notification
         cursor.execute("""
             SELECT c.name
-            FROM Customer1 c
+            FROM Customer c
             JOIN Outage o ON c.id = o.customer_id
             WHERE o.id = %s
         """, (outage_id,))
@@ -669,14 +669,14 @@ def resolve_task(outage_id):
         # 5. Update Crew status to 'Available'
         if crew_id:
             cursor.execute("""
-                UPDATE Crew1
+                UPDATE Crew
                 SET status = 'Available'
                 WHERE id = %s
             """, (crew_id,))
             # Optionally update the crew's location to the outage location
             cursor.execute("""
                 SELECT latitude, longitude 
-                FROM Customer1 
+                FROM Customer 
                 WHERE id = %s
             """, (customer_id,))
             outage_location = cursor.fetchone()
@@ -733,7 +733,7 @@ def fetch_assigned_tasks(crew_id):
                         POINT(c.latitude, c.longitude),
                         POINT(cr.latitude, cr.longitude)
                     )/1000 
-                    FROM Crew1 cr 
+                    FROM Crew cr 
                     WHERE cr.id = %s)
                 ) as distance,
                 COALESCE(t.eta, 
@@ -741,11 +741,11 @@ def fetch_assigned_tasks(crew_id):
                         POINT(c.latitude, c.longitude),
                         POINT(cr.latitude, cr.longitude)
                     )/1000 * 2 
-                    FROM Crew1 cr 
+                    FROM Crew cr 
                     WHERE cr.id = %s)
                 ) as eta
             FROM Outage o
-            JOIN Customer1 c ON o.customer_id = c.id
+            JOIN Customer c ON o.customer_id = c.id
             LEFT JOIN Task t ON o.id = t.outage_id
             WHERE o.assigned_crew_id = %s 
             AND o.status IN ('Assigned', 'In Progress', 'Resolved')
@@ -784,7 +784,7 @@ def update_task_status(outage_id, new_status, distance):
         # 3. Update Crew status if starting task
         if new_status == "In Progress":
             cursor.execute("""
-                UPDATE Crew1
+                UPDATE Crew
                 SET status = 'Busy'
                 WHERE id = %s
             """, (st.session_state.crew_id,))
@@ -822,7 +822,7 @@ def update_crew_status(crew_id, new_status):
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            UPDATE Crew1 
+            UPDATE Crew 
             SET status = %s 
             WHERE id = %s
         """, (new_status, crew_id))
