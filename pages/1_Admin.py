@@ -60,9 +60,19 @@ def apply_full_width_styles():
     """, unsafe_allow_html=True)
 
 # ✅ **SQLAlchemy Database Connection**
+import streamlit as st
+import pymysql
+
 def connect_db():
-    engine = create_engine("mysql+pymysql://root:hera001@localhost/outage_management")
-    return engine
+    conn = pymysql.connect(
+        host=st.secrets["mysql"]["host"],
+        user=st.secrets["mysql"]["user"],
+        password=st.secrets["mysql"]["password"],
+        database=st.secrets["mysql"]["database"],
+        port=st.secrets["mysql"]["port"]
+    )
+    return conn
+
 
 # ✅ **Fetch Records from a Table**
 def fetch_records(table_name):
