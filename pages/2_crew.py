@@ -1074,7 +1074,7 @@ def authenticate_crew(crew_id):
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id FROM Crew1 WHERE id = %s", (crew_id,))
+        cursor.execute("SELECT id FROM Crew WHERE id = %s", (crew_id,))
         result = cursor.fetchone()
         if result:
             st.session_state.authenticated = True
