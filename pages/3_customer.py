@@ -80,7 +80,7 @@ def authenticate_user(meter_number):
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id FROM Customer1 WHERE meter_number = %s", (meter_number,))
+        cursor.execute("SELECT id FROM Customer WHERE meter_number = %s", (meter_number,))
         result = cursor.fetchone()
         if result:
             st.session_state.authenticated = True
