@@ -95,7 +95,7 @@ print(customers.head())  # Verify the first few rows
 # ✅ **Fetch Crew Data**
 def fetch_crew_data():
     engine = connect_db()
-    query = "SELECT id, name, latitude, longitude FROM Crew1"
+    query = "SELECT id, name, latitude, longitude FROM Crew"
     data = pd.read_sql_query(query, engine)
     return data
 
@@ -147,7 +147,7 @@ def fetch_outages():
 # ✅ **Fetch Crew Details**
 def fetch_crew():
     engine = connect_db()
-    query = "SELECT id, name, latitude, longitude, status FROM Crew1"
+    query = "SELECT id, name, latitude, longitude, status FROM Crew"
     data = pd.read_sql_query(query, engine)
     return data
 
@@ -277,7 +277,7 @@ def send_mass_message(sender_id, message, recipient_group="all"):
 # Fetch Crew
 def fetch_crew():
     engine = connect_db()
-    query = "SELECT id, name, latitude, longitude, status FROM Crew1"
+    query = "SELECT id, name, latitude, longitude, status FROM Crew"
     data = pd.read_sql_query(query, engine)
     return data
 
