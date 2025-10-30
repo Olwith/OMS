@@ -837,7 +837,7 @@ def fetch_nearby_customers(crew_id, radius_km=5):
     cursor = conn.cursor()
     try:
         # Get crew's current location
-        cursor.execute("SELECT latitude, longitude FROM Crew1 WHERE id = %s", (crew_id,))
+        cursor.execute("SELECT latitude, longitude FROM Crew WHERE id = %s", (crew_id,))
         crew_location = cursor.fetchone()
         if not crew_location:
             return []
