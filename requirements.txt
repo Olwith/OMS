@@ -1,0 +1,10 @@
+streamlit
+pymysql
+sqlalchemy
+folium
+streamlit-folium
+plotly
+geopandas
+requests
+streamlit-js-eval
+pandas
