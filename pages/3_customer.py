@@ -407,7 +407,7 @@ def get_assigned_crew_with_eta():
     cursor = conn.cursor()
     try:
         # Fetch customer's location
-        cursor.execute("SELECT latitude, longitude FROM Customer1 WHERE meter_number = %s", 
+        cursor.execute("SELECT latitude, longitude FROM Customer WHERE meter_number = %s", 
                       (st.session_state.meter_number,))
         customer_location = cursor.fetchone()
         if not customer_location or None in customer_location:
@@ -418,7 +418,7 @@ def get_assigned_crew_with_eta():
         # Fetch the assigned crew and outage details
         cursor.execute("""
             SELECT c.id, c.name, c.latitude, c.longitude, o.id 
-            FROM Crew1 c
+            FROM Crew c
             JOIN Outage o ON c.id = o.assigned_crew_id
             JOIN Customer1 cu ON o.customer_id = cu.id
             WHERE cu.meter_number = %s AND o.status IN ('Assigned', 'In Progress')
@@ -451,7 +451,7 @@ def get_customer_id():
         return None
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM Customer1 WHERE meter_number = %s", (st.session_state.meter_number,))
+    cursor.execute("SELECT id FROM Customer WHERE meter_number = %s", (st.session_state.meter_number,))
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else None
@@ -463,7 +463,7 @@ def report_outage(description):
         # Insert the outage into the database
         cursor.execute("""
             INSERT INTO Outage (customer_id, description, report_time, status)
-            VALUES ((SELECT id FROM Customer1 WHERE meter_number = %s), %s, NOW(), 'Pending')
+            VALUES ((SELECT id FROM Customer WHERE meter_number = %s), %s, NOW(), 'Pending')
         """, (st.session_state.meter_number, description))
         outage_id = cursor.lastrowid  # Get the ID of the newly created outage
         conn.commit()
@@ -489,7 +489,7 @@ def assign_incident_to_best_crew(outage_id):
         cursor.execute("""
             SELECT c.latitude, c.longitude
             FROM Outage o
-            JOIN Customer1 c ON o.customer_id = c.id
+            JOIN Customer c ON o.customer_id = c.id
             WHERE o.id = %s
         """, (outage_id,))
         customer_location = cursor.fetchone()
@@ -499,7 +499,7 @@ def assign_incident_to_best_crew(outage_id):
         customer_lat, customer_lon = customer_location
         cursor.execute("""
             SELECT c.id, c.name, c.latitude, c.longitude, COUNT(o.id) AS incident_count
-            FROM Crew1 c
+            FROM Crew c
             LEFT JOIN Outage o ON c.id = o.assigned_crew_id
             GROUP BY c.id
         """)
@@ -562,7 +562,7 @@ def fetch_nearby_crews(customer_lat, customer_lon, max_distance=5):
         
         cursor.execute("""
             SELECT id, name, latitude, longitude 
-            FROM Crew1
+            FROM Crew
             WHERE latitude IS NOT NULL AND longitude IS NOT NULL
         """)
         nearby_crews = []
@@ -588,7 +588,7 @@ def get_customer_location():
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT latitude, longitude FROM Customer1 WHERE meter_number = %s", 
+        cursor.execute("SELECT latitude, longitude FROM Customer WHERE meter_number = %s", 
                        (st.session_state.meter_number,))
         location = cursor.fetchone()
         return location if location else (None, None)
@@ -609,7 +609,7 @@ def display_interactive_map():
     cursor = conn.cursor()
     try:
         # Fetch customer's location
-        cursor.execute("SELECT latitude, longitude FROM Customer1 WHERE meter_number = %s", 
+        cursor.execute("SELECT latitude, longitude FROM Customer WHERE meter_number = %s", 
                       (st.session_state.meter_number,))
         customer_location = cursor.fetchone()
         if not customer_location or None in customer_location:
@@ -674,7 +674,7 @@ def display_interactive_map():
         # Fetch nearby crews
         cursor.execute("""
             SELECT id, name, latitude, longitude 
-            FROM Crew1
+            FROM Crew
             WHERE latitude IS NOT NULL AND longitude IS NOT NULL
             AND (id != %s OR %s IS NULL)
             ORDER BY id
@@ -751,7 +751,7 @@ def update_crew_locations():
     try:
         cursor.execute("""
             SELECT id, latitude, longitude 
-            FROM Crew1
+            FROM Crew
         """)
         crews = cursor.fetchall()
         for crew in crews:
