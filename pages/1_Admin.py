@@ -1,5 +1,5 @@
 import streamlit as st
-import mysql.connector  
+import pymysql  
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
