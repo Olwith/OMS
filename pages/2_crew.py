@@ -358,13 +358,19 @@ def make_mobile_friendly():
 make_mobile_friendly()
 
 # MySQL Database Connection
+import streamlit as st
+import pymysql
+
 def connect_db():
-    return pymysql.connect(
-        host="localhost",
-        user="root",
-        password="hera001",
-        database="outage_management"
+    conn = pymysql.connect(
+        host=st.secrets["mysql"]["host"],
+        user=st.secrets["mysql"]["user"],
+        password=st.secrets["mysql"]["password"],
+        database=st.secrets["mysql"]["database"],
+        port=st.secrets["mysql"]["port"]
     )
+    return conn
+
 
 # Calculate Distance using Haversine formula (km)
 def calculate_distance(lat1, lon1, lat2, lon2):
