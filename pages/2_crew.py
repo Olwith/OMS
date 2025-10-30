@@ -418,7 +418,7 @@ def get_outage_location(outage_id):
 def fetch_nearby_incidents(crew_id):
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT latitude, longitude FROM Crew1 WHERE id = %s", (crew_id,))
+    cursor.execute("SELECT latitude, longitude FROM Crew WHERE id = %s", (crew_id,))
     crew_location = cursor.fetchone()
     if not crew_location:
         conn.close()
@@ -432,7 +432,7 @@ def fetch_nearby_incidents(crew_id):
     cursor.execute("""
         SELECT o.id, c.latitude, c.longitude, o.description, o.status, o.assigned_crew_id, cr.name AS assigned_crew_name
         FROM Outage o
-        JOIN Customer1 c ON o.customer_id = c.id
+        JOIN Customer c ON o.customer_id = c.id
         LEFT JOIN Crew1 cr ON o.assigned_crew_id = cr.id
         WHERE o.status IN ('Pending', 'Assigned', 'In Progress')
     """)
@@ -507,7 +507,7 @@ def send_notification_to_crew(crew_id, message):
     cursor = conn.cursor()
     try:
         # First verify this is actually a crew member
-        cursor.execute("SELECT id FROM Crew1 WHERE id = %s", (crew_id,))
+        cursor.execute("SELECT id FROM Crew WHERE id = %s", (crew_id,))
         if not cursor.fetchone():
             st.error("❌ Invalid crew ID")
             return False
