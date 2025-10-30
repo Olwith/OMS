@@ -420,7 +420,7 @@ def get_assigned_crew_with_eta():
             SELECT c.id, c.name, c.latitude, c.longitude, o.id 
             FROM Crew c
             JOIN Outage o ON c.id = o.assigned_crew_id
-            JOIN Customer1 cu ON o.customer_id = cu.id
+            JOIN Customer cu ON o.customer_id = cu.id
             WHERE cu.meter_number = %s AND o.status IN ('Assigned', 'In Progress')
         """, (st.session_state.meter_number,))
         crew = cursor.fetchone()
@@ -635,9 +635,9 @@ def display_interactive_map():
         # Fetch assigned crew (if any)
         cursor.execute("""
             SELECT c.id, c.name, c.latitude, c.longitude 
-            FROM Crew1 c
+            FROM Crew c
             JOIN Outage o ON c.id = o.assigned_crew_id
-            JOIN Customer1 cu ON o.customer_id = cu.id
+            JOIN Customer cu ON o.customer_id = cu.id
             WHERE cu.meter_number = %s AND o.status IN ('Assigned', 'Pending')
         """, (st.session_state.meter_number,))
         assigned_crew = cursor.fetchone()
