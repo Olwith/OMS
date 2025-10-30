@@ -59,13 +59,19 @@ if "outage_id" not in st.session_state:
     st.session_state.outage_id = None
 
 # Database connection function
+import streamlit as st
+import pymysql
+
 def connect_db():
-    return pymysql.connect(
-        host="localhost",
-        user="root",
-        password="hera001",
-        database="outage_management"
+    conn = pymysql.connect(
+        host=st.secrets["mysql"]["host"],
+        user=st.secrets["mysql"]["user"],
+        password=st.secrets["mysql"]["password"],
+        database=st.secrets["mysql"]["database"],
+        port=st.secrets["mysql"]["port"]
     )
+    return conn
+
 
 # Authentication function
 def authenticate_user(meter_number):
