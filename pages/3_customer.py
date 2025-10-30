@@ -68,9 +68,11 @@ def connect_db():
         user=st.secrets["mysql"]["user"],
         password=st.secrets["mysql"]["password"],
         database=st.secrets["mysql"]["database"],
-        port=st.secrets["mysql"]["port"]
+        port=st.secrets["mysql"]["port"],
+        ssl={"ssl": {}}
     )
     return conn
+
 
 
 # Authentication function
